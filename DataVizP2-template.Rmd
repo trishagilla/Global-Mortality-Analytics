@@ -1,0 +1,302 @@
+---
+title: | 
+ | Data Visualization Project 2
+ | Tableau Story
+subtitle: |
+ | Global Burden of Disease (1970–2010)
+author: | 
+ | Trisha Gilla
+ | Northeastern University
+ | INSH 5302: Information Design and Visual Analytics
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    code_download: true
+    fig_caption: yes
+    df_print: kable
+    theme: lumen
+    toc: yes
+    toc_float:
+      collapsed: false
+---
+
+# Introduction
+
+> How have global mortality patterns changed from 1970 to 2010 across different countries, age groups, and sexes, and what do these patterns reveal about progress and inequality in global health?
+
+This project examines how death rates have evolved worldwide between 1970 and 2010 using data from the Global Burden of Disease study. The dataset includes country-level mortality rates per 100,000 people, broken down by year, age group, and sex. Using R, I cleaned and summarized the data to identify major trends and calculated key statistics that describe global health improvements. Visualizations created in both R and Tableau, including line charts, bar graphs, heatmaps, and interactive maps, illustrate how mortality has declined overall but remains uneven across regions and demographics. The analysis highlights significant progress in global health while emphasizing persistent disparities that continue to affect certain populations more than others.
+
+## Data
+### Load Libraries and Packages
+```{r, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(mosaic)
+```
+
+### Description of data
+This dataset includes information about death rates in different countries from 1970 to 2010. It shows the number of deaths and the death rate per 100,000 people, grouped by country, year, and age group.
+
+I chose this dataset because it helps show how death rates have changed over time and how they differ between countries and age groups. It’s a good way to understand global health trends using real data.
+
+> Topic: Health
+
+> Data set: Global Burden of Disease
+
+### Load and Clean Data
+```{r, message=FALSE, warning=FALSE}
+csv_file <- ("https://public.tableau.com/app/sample-data/IHME_GBD_2010_MORTALITY_AGE_SPECIFIC_BY_COUNTRY_1970_2010.csv")
+
+health_data <- read.csv(csv_file)
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Display dataset
+glimpse(health_data)
+
+# Count how many missing values are present in each column
+colSums(is.na(health_data))
+
+# Clean numeric columns by removing commas and converting them from character to numeric
+health_data <- health_data %>%
+  mutate(
+    Number.of.Deaths = as.numeric(gsub(",", "", Number.of.Deaths)),
+    Death.Rate.Per.100.000 = as.numeric(gsub(",", "", Death.Rate.Per.100.000))
+  )
+
+# Reduce the dataset to include only the columns that are relevant to my analysis.
+health_clean <- health_data %>%
+  select(Country.Code, Country.Name, Year, Age.Group, Sex, Death.Rate.Per.100.000)
+
+# Save cleaned dataset as a CSV file
+write.csv(health_clean, "health_clean.csv", row.names = FALSE)
+```
+
+### Preview Data
+```{r, message=FALSE, warning=FALSE}
+head(health_clean)
+```
+
+### Variables
+```{r, message = FALSE, warning = FALSE}
+names(health_clean)
+```
+
+The variables featured in this data visualization project are:
+
+1. Country.Code: A short three-letter code for each country (for example, “USA” for the United States or “IND” for India). This helps Tableau recognize each country when making maps.
+
+2. Country.Name: The full name of each country. Used to label and group the data in graphs and maps.
+
+3. Year: The year the data was collected. The dataset includes information for 1970, 1980, 1990, 2000, and 2010.
+
+4. Age.Group: The age range of people (for example, “0–6 days”, “1–4 years”, etc.). This helps compare death rates between different age groups.
+
+5. Sex: Indicates whether the data represents males, females, or both combined. Used to compare death rates between genders.
+
+6. Death.Rate.Per.100.000: The number of deaths per 100,000 people for each country, age group, and year. This is the main variable used to study and compare death rates over time.
+
+* * *
+
+# Data Analysis
+
+## Required Analysis
+
+### Chart/Graph 
+```{r, message = FALSE, warning = FALSE}
+global_trend <- health_clean %>%
+  group_by(Year) %>%
+  summarise(Average_Death_Rate = mean(Death.Rate.Per.100.000, na.rm = TRUE))
+
+ggplot(global_trend, aes(x = Year, y = Average_Death_Rate)) +
+  geom_line(color = "darkred", size = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Global Death Rate Trend (1970–2010)",
+       x = "Year", y = "Average Death Rate per 100,000")
+```
+
+```{r, message = FALSE, warning = FALSE}
+# Top countries by Death Rate in 2010
+top_countries <- health_clean %>%
+  filter(Year == 2010) %>%
+  group_by(Country.Name) %>%
+  summarise(Average_Death_Rate = mean(Death.Rate.Per.100.000, na.rm = TRUE)) %>%
+  arrange(desc(Average_Death_Rate)) %>%
+  head(10)
+
+ggplot(top_countries, aes(x = reorder(Country.Name, Average_Death_Rate), y = Average_Death_Rate)) +
+  geom_col(fill = "darkred") +
+  coord_flip() +
+  labs(title = "Top 10 Countries by Death Rate (2010)",
+       x = "Country", y = "Average Death Rate per 100,000")  +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  )
+
+# Top countries by Death Rate in 2000
+top_countries_2000 <- health_clean %>%
+  filter(Year == 2000) %>%
+  group_by(Country.Name) %>%
+  summarise(Average_Death_Rate = mean(Death.Rate.Per.100.000, na.rm = TRUE)) %>%
+  arrange(desc(Average_Death_Rate)) %>%
+  head(10)
+
+ggplot(top_countries_2000, aes(x = reorder(Country.Name, Average_Death_Rate), y = Average_Death_Rate)) +
+  geom_col(fill = "darkred") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries by Death Rate (2000)",
+    x = "Country",
+    y = "Average Death Rate per 100,000"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  )
+
+# Top countries by Death Rate in 1990
+top_countries_1990 <- health_clean %>%
+  filter(Year == 1990) %>%
+  group_by(Country.Name) %>%
+  summarise(Average_Death_Rate = mean(Death.Rate.Per.100.000, na.rm = TRUE)) %>%
+  arrange(desc(Average_Death_Rate)) %>%
+  head(10)
+
+ggplot(top_countries_1990, aes(x = reorder(Country.Name, Average_Death_Rate), y = Average_Death_Rate)) +
+  geom_col(fill = "darkred") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries by Death Rate (1990)",
+    x = "Country",
+    y = "Average Death Rate per 100,000"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"))
+
+# Top countries by Death Rate in 1980
+top_countries_1980 <- health_clean %>%
+  filter(Year == 1980) %>%
+  group_by(Country.Name) %>%
+  summarise(Average_Death_Rate = mean(Death.Rate.Per.100.000, na.rm = TRUE)) %>%
+  arrange(desc(Average_Death_Rate)) %>%
+  head(10)
+
+ggplot(top_countries_1980, aes(x = reorder(Country.Name, Average_Death_Rate), y = Average_Death_Rate)) +
+  geom_col(fill = "darkred") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries by Death Rate (1980)",
+    x = "Country",
+    y = "Average Death Rate per 100,000"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"))
+
+# Top countries by Death Rate in 1970
+top_countries_1970 <- health_clean %>%
+  filter(Year == 1970) %>%
+  group_by(Country.Name) %>%
+  summarise(Average_Death_Rate = mean(Death.Rate.Per.100.000, na.rm = TRUE)) %>%
+  arrange(desc(Average_Death_Rate)) %>%
+  head(10)
+
+ggplot(top_countries_1970, aes(x = reorder(Country.Name, Average_Death_Rate), y = Average_Death_Rate)) +
+  geom_col(fill = "darkred") +
+  coord_flip() +
+  labs(
+    title = "Top 10 Countries by Death Rate (1970)",
+    x = "Country",
+    y = "Average Death Rate per 100,000"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"))
+```
+
+```{r, message = FALSE, warning = FALSE}
+sex_year_summary <- health_clean %>%
+  group_by(Year, Sex) %>%
+  summarise(Average_Death_Rate = mean(Death.Rate.Per.100.000, na.rm = TRUE))
+
+ggplot(sex_year_summary, aes(x = factor(Year), y = Average_Death_Rate, fill = Sex)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("Female" = "#C2185B", "Male" = "#1565C0", "Both" = "#2E7D32")) +  
+  labs(title = "Average Death Rate by Sex Across Years (1970–2010)",
+       x = "Year", y = "Average Death Rate per 100,000",
+       fill = "Sex") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 0, hjust = 0.5)
+  )
+```
+
+### Summary Statistics
+```{r, message = FALSE, warning = FALSE}
+favstats(~ Death.Rate.Per.100.000, data = health_clean)
+
+# Calculate summary statistics for Death Rate
+favstats(Death.Rate.Per.100.000 ~ Year, data = health_clean)
+
+# Summary statistics by Sex
+favstats(Death.Rate.Per.100.000 ~ Sex, data = health_clean)
+
+# Summary statistics by Age Group
+favstats(Death.Rate.Per.100.000 ~ Age.Group, data = health_clean)
+```
+
+## Additional Analyses
+*Any additional analysis should be conducted using Tableau.*
+
+* * *
+
+# Tableau Story
+
+Embed your Tableau Story Here: 
+
+<div class='tableauPlaceholder' id='viz1762141857611' style='position: relative'><noscript><a href='#'><img alt='Global Burden of Disease (1970–2010) ' src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;Gl&#47;GlobalBurdenofDisease19702010&#47;GlobalBurdenofDisease19702010&#47;1_rss.png' style='border: none' /></a></noscript><object class='tableauViz'  style='display:none;'><param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' /> <param name='embed_code_version' value='3' /> <param name='site_root' value='' /><param name='name' value='GlobalBurdenofDisease19702010&#47;GlobalBurdenofDisease19702010' /><param name='tabs' value='no' /><param name='toolbar' value='yes' /><param name='static_image' value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;Gl&#47;GlobalBurdenofDisease19702010&#47;GlobalBurdenofDisease19702010&#47;1.png' /> <param name='animate_transition' value='yes' /><param name='display_static_image' value='yes' /><param name='display_spinner' value='yes' /><param name='display_overlay' value='yes' /><param name='display_count' value='yes' /><param name='language' value='en-US' /><param name='filter' value='publish=yes' /></object></div>                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{js echo = FALSE}
+var divElement = document.getElementById('viz1762141857611'); var vizElement = divElement.getElementsByTagName('object')[0]; vizElement.style.width='1016px';vizElement.style.height='991px';                    var scriptElement = document.createElement('script');                    scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';       vizElement.parentNode.insertBefore(scriptElement, vizElement);             
+```
+
+
+
+
+URL Link to Tableau Story Site: [Trisha Gilla - Data Viz Project 2] https://public.tableau.com/views/GlobalBurdenofDisease19702010/GlobalBurdenofDisease19702010?:language=en-US&publish=yes&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link
+
+* * *
+
+# References
+*Include any references that you might have used to construct your graphic. This may include, but is not limited to citations for: graphics used, coding techniques, data collection, R-Markdown/RStudio documentation, etc. Delete this when complete.*
+
+1. Global burden of disease study 2010 (GBD 2010) mortality results 1970-2010. GHDx. (1970, January 1). https://ghdx.healthdata.org/record/ihme-data/gbd-2010-mortality-results-1970-2010 
+2. R data visualization cookbook. (n.d.). https://cicerocq.wordpress.com/wp-content/uploads/2020/03/gohil-a.-r-data-visualization-cookbook-.pdf 
+
+* * *
